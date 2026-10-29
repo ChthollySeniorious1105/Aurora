@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Aurora 联机小游戏（网页版）">
+  <meta name="theme-color" content="#1b1f3b">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Aurora">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Aurora 联机小游戏</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; height: 100%; background: radial-gradient(circle at 50% 35%, #262d59 0%, #15182e 75%); overflow: hidden; }
+    /* Flutter puts pubspec font assets under assets/<asset path>. */
+    @font-face { font-family: "ClaudeSansStd"; src: url("assets/assets/fonts/ClaudeSansStd.OTF") format("opentype"); font-display: swap; }
+    #aurora-loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #e4e9ff; font: 16px/1.6 "ClaudeSansStd", "Microsoft YaHei", "PingFang SC", sans-serif;
+      gap: 14px; user-select: none;
+    }
+    .aurora-title { font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #ffffff; text-shadow: 0 2px 18px rgba(114, 137, 255, 0.55); }
+    .aurora-sub { font-size: 13px; color: #9aa6e8; letter-spacing: 1.5px; text-align: center; padding: 0 24px; }
+    .aurora-pct { font-size: 12px; color: #7d89c9; letter-spacing: 1px; min-height: 19px; margin-top: -8px; text-align: center; padding: 0 24px; }
+    .aurora-bar { width: 200px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; position: relative; }
+    .aurora-fill {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px;
+      background: linear-gradient(90deg, #6c8cff, #48e5c2); transition: width 0.25s ease-out;
+    }
+    .aurora-bar.indeterminate .aurora-fill { display: none; }
+    .aurora-bar.indeterminate::after {
+      content: ""; position: absolute; inset: 0; width: 45%; border-radius: 4px;
+      background: linear-gradient(90deg, #6c8cff, #48e5c2, #6c8cff);
+      animation: aurora-slide 1.25s ease-in-out infinite;
+    }
+    @keyframes aurora-slide {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(230%); }
+    }
+    .aurora-retry {
+      margin-top: 4px; padding: 8px 26px; border: 0; border-radius: 18px; cursor: pointer;
+      font: inherit; font-size: 14px; letter-spacing: 2px; color: #15182e;
+      background: linear-gradient(90deg, #6c8cff, #48e5c2); box-shadow: 0 4px 18px rgba(72, 229, 194, 0.25);
+    }
+    .aurora-retry:hover { filter: brightness(1.08); }
+    .aurora-retry[hidden], #aurora-loading.failed .aurora-bar { display: none; }
+    #aurora-loading.failed .aurora-sub { color: #ffb4b4; }
+  </style>
+</head>
+<body>
+  <div id="aurora-loading">
+    <div class="aurora-title">AURORA</div>
+    <div class="aurora-bar indeterminate" id="aurora-bar"><div class="aurora-fill" id="aurora-fill"></div></div>
+    <div class="aurora-sub" id="aurora-sub" aria-live="polite">正在载入联机大厅与游戏引擎…</div>
+    <div class="aurora-pct" id="aurora-pct"></div>
+    <button class="aurora-retry" id="aurora-retry" type="button" hidden onclick="location.reload()">重新加载</button>
+  </div>
+  <noscript><p style="position:fixed;bottom:24px;width:100%;text-align:center;color:#ffb4b4;font:14px sans-serif">请启用浏览器的 JavaScript 后刷新页面。</p></noscript>
+  <script src="flutter_bootstrap.js" async onerror="document.getElementById('aurora-loading').classList.add('failed');document.getElementById('aurora-sub').textContent='加载失败：无法下载启动脚本，请检查网络连接。';document.getElementById('aurora-retry').hidden=false"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  aurora:
+    build: .
+    container_name: aurora-webserver
+    restart: unless-stopped
+    ports:
+      - "7790:7790"
+    environment:
+      - TRUST_PROXY=false
+      - PUBLIC_WEB_URL=
+      - ADMIN_TOKEN=
+    volumes:
+      - ./data:/app/data
+      - ./replays:/app/replays
+      - ./words:/app/words

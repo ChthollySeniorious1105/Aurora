@@ -1,0 +1,8 @@
+/dist/
+**/build/
+**/.dart_tool/
+/data/
+/replays/
+/words/
+/.env
+.git/

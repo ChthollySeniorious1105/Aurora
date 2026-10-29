@@ -1,0 +1,207 @@
+import '../i18n/aurora_i18n.dart';
+
+import 'package:aurora_shared/aurora_shared.dart';
+import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+
+import '../main.dart';
+import '../platform/invitations.dart';
+import '../state/app_state.dart';
+
+Future<void> showInviteDialog(BuildContext context) => showDialog(
+  useRootNavigator: false,
+  context: context,
+  builder: (_) => InviteDialog(app: AppScope.read(context)),
+);
+
+class InviteDialog extends StatefulWidget {
+  final AppState app;
+  const InviteDialog({super.key, required this.app});
+  @override
+  State<InviteDialog> createState() => _InviteDialogState();
+}
+
+class _InviteDialogState extends State<InviteDialog> {
+  late final url = TextEditingController(text: suggestedWebUrl(widget.app));
+  @override
+  void dispose() {
+    url.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final link = roomInvitation(widget.app, url.text);
+    final cs = Theme.of(context).colorScheme;
+    final code = widget.app.room?['id'];
+    return AlertDialog(
+      title: const AuroraText('邀请好友 · 扫码加入'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (code != null) ...[
+                AuroraText('房间号', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.7))),
+                SelectableText(
+                  '$code',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 6, color: cs.primary),
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextField(
+                controller: url,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: auroraT('好友可访问的网页版地址'),
+                  hintText: auroraT('https://play.example.com'),
+                  prefixIcon: const Icon(Icons.link),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 8),
+              AuroraText(
+                '内网穿透时填写实际网页入口地址。手机扫码后可直接用浏览器打开，房间密码需另行输入。',
+                style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.75)),
+              ),
+              const SizedBox(height: 16),
+              if (link != null) ...[
+                Builder(
+                  builder: (context) {
+                    // AlertDialog measures intrinsic width, so size from the screen, not a LayoutBuilder.
+                    final size = (MediaQuery.sizeOf(context).width - 140).clamp(120.0, 220.0);
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        // QR codes need a light quiet zone regardless of theme.
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: cs.outlineVariant),
+                      ),
+                      child: QrImageView(
+                        data: link,
+                        size: size,
+                        padding: EdgeInsets.zero,
+                        backgroundColor: Colors.white,
+                        semanticsLabel: auroraT('Aurora 房间邀请二维码'),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: SelectableText(link, style: const TextStyle(fontSize: 13))),
+                      IconButton(
+                        tooltip: auroraT('复制'),
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () => copyText(context, link),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else
+                _InvalidUrl(color: cs.error),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const AuroraText('关闭'),
+        ),
+        FilledButton.icon(
+          icon: const Icon(Icons.share, size: 18),
+          onPressed: link == null
+              ? null
+              : () {
+                  widget.app.prefs.setString(
+                    'inviteWeb:${widget.app.address}',
+                    url.text.trim(),
+                  );
+                  copyText(context, '来 Aurora 一起玩！\n$link');
+                },
+          label: const AuroraText('复制邀请链接'),
+        ),
+      ],
+    );
+  }
+}
+
+class _InvalidUrl extends StatelessWidget {
+  final Color color;
+  const _InvalidUrl({required this.color});
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(Icons.error_outline, size: 18, color: color),
+          const SizedBox(width: 6),
+          Expanded(child: AuroraText('请填写有效的 http 或 https 地址', style: TextStyle(color: color))),
+        ],
+      );
+}
+
+class InvitationBanner extends StatelessWidget {
+  final AppState app;
+  const InvitationBanner({super.key, required this.app});
+  @override
+  Widget build(BuildContext context) {
+    final code = app.pendingInvitation?.room;
+    if (code == null) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      color: cs.primaryContainer.withValues(alpha: 0.85),
+      child: ListTile(
+        leading: Icon(Icons.mail_outline, color: cs.onPrimaryContainer),
+        textColor: cs.onPrimaryContainer,
+        title: Text(auroraT('邀请房间：{0}', [code])),
+        subtitle: const AuroraText('已连接服务器，点击加入邀请房间'),
+        trailing: FilledButton(
+          onPressed: () async {
+            final pwd = TextEditingController();
+            final ok = await showDialog<bool>(
+              useRootNavigator: false,
+              context: context,
+              builder: (c) => AlertDialog(
+                title: AuroraText('加入房间 $code'),
+                content: TextField(
+                  controller: pwd,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: auroraT('房间密码（没有则留空）'),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(c, false),
+                    child: const AuroraText('取消'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(c, true),
+                    child: const AuroraText('加入'),
+                  ),
+                ],
+              ),
+            );
+            final password = pwd.text;
+            // The dialog route may still be animating; its controller is disposed after the transition.
+            Future<void>.delayed(const Duration(seconds: 1), pwd.dispose);
+            if (ok == true) {
+              app.send({'t': Msg.joinRoom, 'room': code, 'password': password});
+            }
+          },
+          child: const AuroraText('加入'),
+        ),
+      ),
+    );
+  }
+}
